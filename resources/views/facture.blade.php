@@ -19,6 +19,14 @@
                 <option value="0">TVA 0% (Auto-entrepreneur)</option>
                 <option value="20">TVA 20%</option>
             </select>
+            <hr>
+            <h5>Statut</h5>
+            <select id="fac-status" class="form-select mb-2">
+                <option value="draft">Brouillon</option>
+                <option value="sent">Envoyée</option>
+                <option value="paid">Payée</option>
+                <option value="overdue">En retard</option>
+            </select>
         </div>
     </div>
     <div class="col-lg-8">
@@ -45,7 +53,10 @@
                     <span>TOTAL TTC :</span> <span id="fac-grand-total">0 €</span>
                 </div>
             </div>
-            <button class="btn btn-njie w-100" onclick="exportPDF('FACTURE')">Générer la Facture PDF</button>
+            <div class="d-flex gap-2">
+                <button class="btn btn-njie flex-fill" onclick="exportPDF('FACTURE')">Générer la Facture PDF</button>
+                <button class="btn btn-success flex-fill" onclick="validateFacture()">Valider la facture</button>
+            </div>
         </div>
     </div>
 </div>
@@ -90,6 +101,73 @@
             const totalEl = document.getElementById(type + '-grand-total');
             if(totalEl) totalEl.innerText = totalHT.toLocaleString() + ' €';
         }
+    }
+
+    // Fonction pour valider la facture
+    function validateFacture() {
+        const clientName = document.getElementById('fac-client-name').value;
+        const clientAddr = document.getElementById('fac-client-addr').value;
+        const reference = document.getElementById('fac-ref').value;
+        const deadline = document.getElementById('fac-deadline').value;
+        const tvaRate = document.getElementById('fac-tva').value;
+        const status = document.getElementById('fac-status').value;
+        
+        if (!clientName || !clientAddr || !reference || !deadline) {
+            alert('Veuillez remplir tous les champs obligatoires.');
+            return;
+        }
+
+        // Récupérer les lignes de la facture
+        const rows = document.querySelectorAll('#fac-body tr');
+        const items = [];
+        
+        rows.forEach(row => {
+            const inputs = row.querySelectorAll('input');
+            if (inputs[0].value) { // Vérifier si la description n'est pas vide
+                items.push({
+                    description: inputs[0].value,
+                    quantity: parseFloat(inputs[1].value) || 0,
+                    price: parseFloat(inputs[2].value) || 0
+                });
+            }
+        });
+
+        if (items.length === 0) {
+            alert('Veuillez ajouter au moins un article à la facture.');
+            return;
+        }
+
+        // Envoyer les données au serveur
+        fetch('{{ route('facture.store') }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                client_name: clientName,
+                client_address: clientAddr,
+                reference: reference,
+                deadline: deadline,
+                tva_rate: tvaRate,
+                status: status,
+                items: items
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Facture validée avec succès!');
+                // Optionnel : rediriger vers la liste des factures
+                // window.location.href = '{{ route('factures.list') }}';
+            } else {
+                alert('Une erreur est survenue lors de la validation de la facture.');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Une erreur est survenue lors de la validation de la facture.');
+        });
     }
 
     // Export PDF Professionnel (Facture)

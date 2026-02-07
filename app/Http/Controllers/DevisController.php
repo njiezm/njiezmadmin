@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Devis;
 use App\Models\Client;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Str;
 
 class DevisController extends Controller
 {
@@ -35,12 +37,13 @@ class DevisController extends Controller
             'siret' => $validated['client_siret'] ?? null,
         ]);
 
-        // Création du devis
+        // Création du devis avec le statut "draft" par défaut
         $devis = Devis::create([
             'client_id' => $client->id,
             'reference' => $validated['reference'],
             'date' => $validated['date'],
-            'total_ht' => 0, // Sera calculé ci-dessous
+            'total_ht' => 0,
+            'status' => 'draft', // Statut par défaut
         ]);
 
         // Ajout des articles au devis
@@ -65,5 +68,67 @@ class DevisController extends Controller
             'message' => 'Devis créé avec succès',
             'devis_id' => $devis->id,
         ]);
+    }
+
+    public function list()
+    {
+        $devis = Devis::with('client')->latest()->get();
+        return view('devis.list', compact('devis'));
+    }
+
+    /**
+     * Génère le PDF d'un devis spécifique.
+     */
+    public function generatePdf(Devis $devis)
+    {
+        // Charger les relations nécessaires
+        $devis->load('client', 'items');
+
+        // Préparer les données pour le template
+        $document = [
+            'type' => 'quote',
+            'id' => $devis->id,
+            'issue_date' => $devis->date,
+            'client_name' => $devis->client->name,
+            'title' => 'Devis : Prestations de services',
+            'amount' => $devis->total_ht,
+            'status' => $devis->status, // Ajout du statut
+            'metadata' => [
+                'client_address' => $devis->client->address,
+                'client_email' => $devis->client->email,
+                'client_phone' => $devis->client->phone,
+                'items' => $devis->items->map(function ($item) {
+                    return [
+                        'description' => $item->description,
+                        'quantity' => $item->quantity,
+                        'unit_price' => $item->price,
+                        'vat' => 20.0,
+                    ];
+                })->toArray(),
+            ]
+        ];
+
+        $company = config('company');
+
+        // Charger la vue et générer le PDF avec le nouveau template
+        $pdf = Pdf::loadView('pdf.devis-template', compact('document', 'company'));
+        
+        // Télécharger le PDF
+        return $pdf->download('devis-' . $devis->reference . '.pdf');
+    }
+
+    /**
+     * Met à jour le statut d'un devis.
+     */
+    public function updateStatus(Request $request, Devis $devis)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:draft,sent,accepted,rejected',
+        ]);
+
+        $devis->update(['status' => $validated['status']]);
+
+        return redirect()->route('devis.list')
+            ->with('success', 'Le statut du devis a été mis à jour avec succès.');
     }
 }

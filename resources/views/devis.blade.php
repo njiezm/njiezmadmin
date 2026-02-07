@@ -15,6 +15,14 @@
             <h5>Référence</h5>
             <input type="text" id="devis-ref" class="form-control mb-2" placeholder="Ex: D2024-001">
             <input type="date" id="devis-date" class="form-control mb-2">
+            <hr>
+            <h5>Statut</h5>
+            <select id="devis-status" class="form-select mb-2">
+                <option value="draft">Brouillon</option>
+                <option value="sent">Envoyé</option>
+                <option value="accepted">Accepté</option>
+                <option value="rejected">Refusé</option>
+            </select>
         </div>
     </div>
     <div class="col-lg-8">
@@ -35,7 +43,10 @@
             </table>
             <button class="btn btn-sm btn-outline-dark mb-3" onclick="addRow('devis-body', 'devis')">+ Ligne</button>
             <div class="total-box mb-3" id="devis-grand-total">650 €</div>
-            <button class="btn btn-njie w-100" onclick="exportPDF('DEVIS')">Exporter Devis PDF</button>
+            <div class="d-flex gap-2">
+                <button class="btn btn-njie flex-fill" onclick="exportPDF('DEVIS')">Exporter Devis PDF</button>
+                <button class="btn btn-success flex-fill" onclick="validateDevis()">Valider le devis</button>
+            </div>
         </div>
     </div>
 </div>
@@ -72,6 +83,72 @@
 
         const totalEl = document.getElementById(type + '-grand-total');
         if(totalEl) totalEl.innerText = totalHT.toLocaleString() + ' €';
+    }
+
+    // Fonction pour valider le devis
+    function validateDevis() {
+        const clientName = document.getElementById('devis-client-name').value;
+        const clientAddr = document.getElementById('devis-client-addr').value;
+        const reference = document.getElementById('devis-ref').value;
+        const date = document.getElementById('devis-date').value;
+        const status = document.getElementById('devis-status').value;
+        
+        if (!clientName || !clientAddr || !reference || !date) {
+            alert('Veuillez remplir tous les champs obligatoires.');
+            return;
+        }
+
+        // Récupérer les lignes du devis
+        const rows = document.querySelectorAll('#devis-body tr');
+        const items = [];
+        
+        rows.forEach(row => {
+            const inputs = row.querySelectorAll('input');
+            if (inputs[0].value) { // Vérifier si la description n'est pas vide
+                items.push({
+                    description: inputs[0].value,
+                    quantity: parseFloat(inputs[1].value) || 0,
+                    price: parseFloat(inputs[2].value) || 0
+                });
+            }
+        });
+
+        if (items.length === 0) {
+            alert('Veuillez ajouter au moins une ligne au devis.');
+            return;
+        }
+
+        // Envoyer les données au serveur
+        fetch('{{ route('devis.store') }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                client_name: clientName,
+                client_address: clientAddr,
+                client_siret: document.getElementById('devis-client-siret').value,
+                reference: reference,
+                date: date,
+                status: status,
+                items: items
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Devis validé avec succès!');
+                // Optionnel : rediriger vers la liste des devis
+                // window.location.href = '{{ route('devis.list') }}';
+            } else {
+                alert('Une erreur est survenue lors de la validation du devis.');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Une erreur est survenue lors de la validation du devis.');
+        });
     }
 
     // Export PDF Professionnel (Devis)

@@ -180,11 +180,28 @@
             <h3 class="m-0">NJIEZM<span style="color:var(--nj-yellow)">.ADMIN</span></h3>
         </div>
         <div class="nav-menu">
-            <a href="{{ route('dashboard') }}" class="nav-item-admin {{ request()->routeIs('dashboard') ? 'active' : '' }}">📊 Dashboard</a>
-            <a href="{{ route('simulator') }}" class="nav-item-admin {{ request()->routeIs('simulator') ? 'active' : '' }}">🧮 Simulateur Rapide</a>
-            <a href="{{ route('devis') }}" class="nav-item-admin {{ request()->routeIs('devis') ? 'active' : '' }}">📄 Générateur Devis</a>
-            <a href="{{ route('facture') }}" class="nav-item-admin {{ request()->routeIs('facture') ? 'active' : '' }}">💰 Générateur Facture</a>
-            <a href="{{ route('logo') }}" class="nav-item-admin {{ request()->routeIs('logo') ? 'active' : '' }}">🎨 Exportateur Logo</a>
+<!-- ... dans la div .nav-menu ... -->
+<a href="{{ route('dashboard') }}" class="nav-item-admin {{ request()->routeIs('dashboard') ? 'active' : '' }}">📊 Dashboard</a>
+<a href="{{ route('simulator') }}" class="nav-item-admin {{ request()->routeIs('simulator') ? 'active' : '' }}">🧮 Simulateur Rapide</a>
+
+<!-- Section Devis -->
+<div class="nav-item-admin">📄 Gestion Devis</div>
+<div class="ps-4">
+    <a href="{{ route('devis') }}" class="nav-item-admin {{ request()->routeIs('devis') ? 'active' : '' }}" style="font-size: 0.8rem;">+ Créer</a>
+    <!-- C'est ce lien qui pose problème, il doit correspondre à la route nommée 'devis.list' -->
+    <a href="{{ route('devis.list') }}" class="nav-item-admin {{ request()->routeIs('devis.list') ? 'active' : '' }}" style="font-size: 0.8rem;">+ Voir tous</a>
+</div>
+
+<!-- Section Factures -->
+<div class="nav-item-admin">💰 Gestion Facture</div>
+<div class="ps-4">
+    <a href="{{ route('facture') }}" class="nav-item-admin {{ request()->routeIs('facture') ? 'active' : '' }}" style="font-size: 0.8rem;">+ Créer</a>
+    <!-- Et celui-ci pour 'factures.list' -->
+    <a href="{{ route('factures.list') }}" class="nav-item-admin {{ request()->routeIs('factures.list') ? 'active' : '' }}" style="font-size: 0.8rem;">+ Voir toutes</a>
+</div>
+
+<a href="{{ route('logo') }}" class="nav-item-admin {{ request()->routeIs('logo') ? 'active' : '' }}">🎨 Exportateur Logo</a>
+<!-- ... -->
         </div>
         <div class="p-4 mt-auto">
             <a href="#" class="btn btn-outline-light w-100 btn-sm rounded-0">Déconnexion</a>

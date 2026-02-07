@@ -5,6 +5,13 @@
 @section('content')
 <h2 class="section-title">SIMULATEUR DE TARIFS</h2>
 <div class="admin-card">
+    <!-- NOUVEAU CHAMP POUR LE NOM -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label for="sim-client-name" class="form-label">Nom du client ou de l'entité (pour l'export)</label>
+            <input type="text" id="sim-client-name" class="form-control" placeholder="Ex: Société Gamma">
+        </div>
+    </div>
     <table class="table table-bordered align-middle">
         <thead class="table-light">
             <tr>
@@ -27,6 +34,8 @@
     </table>
     <button class="btn btn-sm btn-njie mb-3" onclick="addRow('sim-body', 'sim')">+ Ajouter</button>
     <div class="total-box" id="sim-grand-total">450 €</div>
+<hr>
+    <button class="btn btn-njie" onclick="exportSimulatorPDF()">Exporter en PDF</button>
 </div>
 @endsection
 
@@ -62,6 +71,66 @@
 
         const totalEl = document.getElementById(type + '-grand-total');
         if(totalEl) totalEl.innerText = totalHT.toLocaleString() + ' €';
+    }
+
+    window.onload = () => {
+        updateTotals('sim');
+    };
+
+    // NOUVELLE FONCTION D'EXPORT
+    async function exportSimulatorPDF() {
+        const clientName = document.getElementById('sim-client-name').value;
+        if (!clientName) {
+            alert('Veuillez entrer un nom de client ou d\'entité pour l\'export.');
+            return;
+        }
+
+        const rows = document.querySelectorAll('#sim-body tr');
+        const items = Array.from(rows).map(row => {
+            const inputs = row.querySelectorAll('input');
+            return {
+                description: inputs[0].value,
+                quantity: parseFloat(inputs[1].value) || 0,
+                price: parseFloat(inputs[2].value) || 0,
+            };
+        });
+
+        if (items.length === 0 || items.every(item => !item.description)) {
+            alert('Le devis est vide. Veuillez ajouter au moins une prestation.');
+            return;
+        }
+
+        try {
+            const response = await fetch('{{ route("simulator.pdf") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    clientName: clientName,
+                    items: items
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Erreur lors de la génération du PDF.');
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'estimation-rapide.pdf';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+
+        } catch (error) {
+            console.error('Erreur:', error);
+            alert('Une erreur est survenue. Veuillez réessayer.');
+        }
     }
 
     window.onload = () => {
